@@ -1,0 +1,250 @@
+The “start with this first” I meant is the FaceNet + Python + TensorRT approach from the last message — before using NVIDIA TAO Toolkit.
+
+Start in this order:
+Phase 1 (Start Here ✅)
+
+Use the pretrained model first (no training):
+
+Install packages
+pip install torch torchvision facenet-pytorch opencv-python
+Run the simple comparison script (compare.py)
+python compare.py
+
+This answers:
+
+Are these two photos the same person?
+
+with no model training.
+
+Phase 2 (Optional Next Step)
+
+Then add NVIDIA acceleration:
+
+Export model:
+
+python export_model.py
+
+Build TensorRT engine:
+
+trtexec --onnx=facenet.onnx --saveEngine=facenet.trt --fp16
+
+Now same model, just faster on GPU.
+
+Phase 3 (Only if needed later)
+
+Move to TAO only when you need custom training, like:
+
+your own face dataset
+better side-profile accuracy
+production-scale recognition
+domain-specific faces (helmets, masks, CCTV)
+
+Then use TAO.
+
+So the order is:
+1) Simple FaceNet script   ← Start here
+2) Add TensorRT speedup
+3) Move to TAO if needed
+
+If I were doing it from scratch, I’d begin with Step 1: run compare.py first.
+
+If you want, I can 
+help you run Step 1 on your machine line by line.
+
+Help me run Step 1 on my machine line by line
+
+Perfect — let’s do Step 1 only (simple face comparison) and get it running.
+
+✅ First tell me your OS
+
+Are you on:
+
+Ubuntu/Linux
+Mac
+Windows
+
+(If you're using the NVIDIA containers you mentioned earlier, I’m guessing Linux, so I’ll show Ubuntu first.)
+
+For Ubuntu/Linux
+Step 1 — Open terminal
+
+Check Python:
+
+python3 --version
+
+You should see something like:
+
+Python 3.10.x
+
+Tell me if Python is missing.
+
+Step 2 — Make project folder
+mkdir face_project
+cd face_project
+
+Check you're inside it:
+
+pwd
+Step 3 — Create virtual environment
+python3 -m venv faceenv
+
+Activate it:
+
+source faceenv/bin/activate
+
+You should now see something like:
+
+(faceenv)
+
+at the start of terminal prompt.
+
+Step 4 — Upgrade pip
+pip install --upgrade pip
+Step 5 — Install packages
+
+Run one by one:
+
+pip install torch torchvision
+
+Then:
+
+pip install facenet-pytorch
+
+Then:
+
+pip install opencv-python
+Step 6 — Put your two images in folder
+
+Copy two images into:
+
+face_project/
+
+Name them:
+
+front.jpg
+side.jpg
+
+Check:
+
+ls
+
+Should show:
+
+front.jpg
+side.jpg
+faceenv
+Step 7 — Create Python script
+
+Create file:
+
+nano compare.py
+
+Paste this:
+
+import cv2
+import torch
+import numpy as np
+
+from facenet_pytorch import MTCNN
+from facenet_pytorch import InceptionResnetV1
+
+device='cuda' if torch.cuda.is_available() else 'cpu'
+
+print("Using:",device)
+
+mtcnn = MTCNN(
+    image_size=160,
+    margin=20,
+    device=device
+)
+
+model=InceptionResnetV1(
+    pretrained='vggface2'
+).eval().to(device)
+
+def get_embedding(path):
+
+    img=cv2.imread(path)
+
+    img=cv2.cvtColor(
+       img,
+       cv2.COLOR_BGR2RGB
+    )
+
+    face=mtcnn(img)
+
+    if face is None:
+        return None
+
+    face=face.unsqueeze(0).to(device)
+
+    emb=model(face)
+
+    return emb.detach().cpu().numpy()[0]
+
+
+def cosine(a,b):
+    return np.dot(a,b)/(
+      np.linalg.norm(a)*
+      np.linalg.norm(b)
+    )
+
+e1=get_embedding("front.jpg")
+e2=get_embedding("side.jpg")
+
+if e1 is None or e2 is None:
+    print("Face not detected")
+    exit()
+
+score=cosine(e1,e2)
+
+print("Similarity:",score)
+
+if score > 0.7:
+    print("Same person")
+else:
+    print("Different person")
+
+Save:
+
+Ctrl+O
+Enter
+Ctrl+X
+Step 8 — Run it
+python compare.py
+
+Expected:
+
+Using: cuda
+Similarity: 0.81
+Same person
+
+or maybe CPU:
+
+Using: cpu
+
+That’s fine too.
+
+If you get errors
+If "No module named facenet_pytorch"
+
+Run:
+
+pip install facenet-pytorch
+If "Face not detected"
+
+Use clearer face photos.
+
+If CUDA not detected
+
+It will still run on CPU.
+
+Test complete 🎉
+
+Once this works, we can move to GPU TensorRT.
+
+Reply with what happens after:
+
+python compare.py
+
+and I’ll help debug if anything fails.
